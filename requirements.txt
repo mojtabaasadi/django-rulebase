@@ -1,0 +1,2 @@
+dateparser==0.7.0
+dnspython==1.50.0
