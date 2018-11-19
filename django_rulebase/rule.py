@@ -70,7 +70,10 @@ class active_url(Rule):
     def passes(self,value):
         regex = r"^(?:https?:\/\/)?(?:[^@\/\n]+@)?(?:www\.)?([^:\/?\n]+)"
         domain = re.search(regex,value).group(1)
-        return len(dns.resolver.query(domain,'NS'))>0
+        try:
+            return len(dns.resolver.query(domain,'NS'))>0
+        except Exception as e:
+            return False
         
 
 
@@ -94,12 +97,12 @@ class after_or_equal(Rule):
 
     name = "after-or-equal"
     def passes(self,value):
-        try:
-            return parse(value) > parse(self.values[self.options[0]])
-        except Exception as e :
-            raise e
-            return False
-
+        has,val = self.parse_value(self.options[0],self.values)
+        value_date = parse(value)
+        val_date = parse(val if has else self.options[0])
+        equal = str(val_date).split(" ")[0] == str(value_date).split(" ")[0]
+        return value_date > val_date or equal
+        
 class alpha(Rule):
     "The field under validation must be entirely alphabetic characters."
     name = "alpha"
@@ -162,10 +165,9 @@ class before_or_equal(Rule):
     name = "before-or-equal"
     def message(self):
         return self.__doc__.replace("The field under validation","")
-    def parse_condition(self):
-        self.cond = self.values[self.options[0]]
     def passes(self,value):
-        return parse(value) <= parse(self.cond)
+        is_val ,val = self.parse_value(self.options[0],self.values)
+        return parse(value) <= parse(val if is_val else self.options[0])
 
 
 class between(Rule):
@@ -175,15 +177,14 @@ class between(Rule):
     name = "between"
     def message(self):
         return self.__doc__.replace("The field under validation","")
-    def parse_condition(self):
-        self.cond = self.options[0],self.options[1]
+
     def passes(self,value):
-        min,max = self.cond
+        min,max = self.options[0],self.options[1]
         if isinstance(value,int):
             return value <= int(max) and value >= int(min)
         elif isinstance(value,InMemoryUploadedFile):
             return value.size/1000>=min and value.size/1000<=max
-        elif isinstance(value.list) or isinstance(value,str):
+        elif isinstance(value,list) or isinstance(value,str):
             return len(value) >= min and len(value) <= max
         else:
             return False
@@ -238,11 +239,10 @@ class date_equals(Rule):
     name = "date-equals"
     def message(self):
         return self.__doc__.replace("The field under validation","")
-    def parse_condition(self):
-        self.cond = self.values[self.options[0]]
     def passes(self,value):
-        return parse(self.cond) == parse(value)
-
+        has,cond = self.parse_value(self.options[0],self.values)
+        return str(parse(cond if has else self.options[0])).split(" ")[0] == str(parse(value)).split(" ")[0]
+    
 
 
 class different(Rule):
