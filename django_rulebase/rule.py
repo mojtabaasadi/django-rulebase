@@ -12,10 +12,10 @@ class Rule:
     """
     rule object for construction provide options as list Rule(options)
     """
-    values = dict()
+    values = None
     name = "Rule"
     attribute = ""
-    def __init__(self,options):
+    def __init__(self,options=[]):
         if options is None or (not isinstance(options,str) and not isinstance(options,list)):
             raise Exception("options should be a valid")
         else:
@@ -24,8 +24,27 @@ class Rule:
     def passes(self,value):
         return False
     
-    def parse_value(self,attribute,values):
-        return attribute in values , values[attribute] if attribute in values else None
+    def parse_value(self,attribute):
+        " should parse value and collect value or values returns tuple exist and value"
+        if self.values is None : raise Exception("values is not provided yet")
+        if "." in attribute:
+            _val = self.values
+            childs = attribute.split(".")
+            try:
+                for ch_i in range(len(childs)):
+                    if childs[ch_i]!="*" :
+                        if isinstance(_val,dict) and childs[ch_i] in _val:
+                            _val = _val[childs[ch_i]]
+                        elif isinstance(_val,list):
+                            _val = [v[childs[ch_i]] for v in _val]
+                return True,_val
+            except Exception as e:
+                if "KeyError" in str(e): return  False,None
+        else :
+            if attribute in self.values:
+                return True,self.values[attribute]
+            else:
+                return False,None
     
     def message(self):
         return " validation error for {attribute} because of {rule} "
@@ -46,7 +65,7 @@ class Rule:
         return self.message().format(**{
             'rule':self.name,
             'attribute':self.attribute,
-            'options':self.options,
+            'options':','.join(self.options),
             'value':value
         })
 
@@ -84,7 +103,7 @@ class after(Rule):
     name = "after"
     def passes(self,value):
         try:
-            has_val,val = self.parse_value(self.options[0],self.values)
+            has_val,val = self.parse_value(self.options[0])
             if not has_val:val = self.options[0]
             return parse(value) > parse(val)
         except Exception as e:
@@ -97,7 +116,7 @@ class after_or_equal(Rule):
 
     name = "after-or-equal"
     def passes(self,value):
-        has,val = self.parse_value(self.options[0],self.values)
+        has,val = self.parse_value(self.options[0])
         value_date = parse(value)
         val_date = parse(val if has else self.options[0])
         equal = str(val_date).split(" ")[0] == str(value_date).split(" ")[0]
@@ -151,7 +170,7 @@ class before(Rule):
         return "must be before {options[0]}"
     def passes(self,value):
         try:
-            has_val,val = self.parse_value(self.options[0],self.values)
+            has_val,val = self.parse_value(self.options[0])
             if not has_val : val=self.options[0]
             return parse(value) < parse(val)
         except :
@@ -166,7 +185,7 @@ class before_or_equal(Rule):
     def message(self):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
-        is_val ,val = self.parse_value(self.options[0],self.values)
+        is_val ,val = self.parse_value(self.options[0])
         return parse(value) <= parse(val if is_val else self.options[0])
 
 
@@ -240,7 +259,7 @@ class date_equals(Rule):
     def message(self):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
-        has,cond = self.parse_value(self.options[0],self.values)
+        has,cond = self.parse_value(self.options[0])
         return str(parse(cond if has else self.options[0])).split(" ")[0] == str(parse(value)).split(" ")[0]
     
 
@@ -249,24 +268,23 @@ class different(Rule):
     "The field under validation must have a different value than field."
     name = "different"
     def passes(self,value):
-        return self.values[self.options[0]] != value
+        return self.parse_value(self.options[0])[1] != value
 
 
 class digits(Rule):
     "The field under validation must be numeric and must have an exact length of value."
     name = "digits"
-    def parse_condition(self):
-        self.cond = self.options['value']
+    
     def passes(self,value):
-        return (value.isdigit() or isinstance(value ,int)) and len(str(value)) == self.cond
+        return value.isdigit()  and len(value) == self.options[0]
     
 class digits_between(Rule):
     "The field under validation must have a length between the given min and max."
     name = "digits-between"
-    def parse_condition(self):
-        self.cond = self.options['min'],self.options['max']
-    def digits_between(self,value):
-        return (value.isdigit() or isinstance(value ,int)) and len(str(value)) >= self.cond[0]  and len(str(value)) <= self.cond[1]
+
+    def passes(self,value):
+        min,max = self.options[0],self.options[1]
+        return value.isdigit()  and len(str(value)) >= int(min)  and len(str(value)) <= int(max)
 
 
 
@@ -281,10 +299,8 @@ class email(Rule):
     "The field under validation must be formatted as an e-mail address."
     name = "email"
     def passes(self,value):
-        reg = r"^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$"
+        reg = r"^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$"
         rr = regex([reg])
-        rr.set_attribute(self.attribute)
-        rr.set_values(self.values)
         return rr.passes(value)
 
 class exists(Rule):
@@ -295,15 +311,14 @@ class exists(Rule):
     name = "exists"
     def message(self):
         return self.__doc__.replace("The field under validation","")
-    def parse_condition(self):
-        self.cond = self.options['table'],self.options['column']
+    
     def passes(self,value):
-        table = self.cond[0]
-        column = self.cond[1] if self.cond[1] != None else 'name'
+        table = self.options[0]
+        column = self.options[1] if self.options[1] != None else 'name'
         cr = connection.cursor()
-        cr.execut("select * from {} where {}={}".format(table,column,
+        cr.execute("select * from {} where {}={}".format(table,column,
             value if not isinstance(value,str) else "'"+value+"'"))
-
+        return len(cr.fetchall()) > 0
 
 class file(Rule):
     "The field under validation must be a successfully uploaded file."
@@ -324,20 +339,18 @@ class gt(Rule):
         The two fields must be of the same type. Strings, numerics, arrays,
         and files are evaluated using the same conventions as the  'size' rule.
     """
-
     name = "gt"
     def passes(self, value):
-        try:
-            if isinstance(value, int):
-                return value > int(self.values[self.options[0]])
-            elif isinstance(value, InMemoryUploadedFile):
-                return value.size/1000 > self.values[self.options[0]]/1000
-            elif isinstance(value.list) or isinstance(value, str):
-                return len(value) > len(self.values[self.options[0]])
-            else:
-                return False
-        except :
-            return False
+        if len(self.options)>0 and self.parse_value(self.options[0])[0]:
+            val = self.parse_value(self.options[0])[1]
+            if type(value) == type(val):
+                if isinstance(value, int):
+                    return value > int(val)
+                elif isinstance(value, InMemoryUploadedFile):
+                    return value.size/1000 > val/1000
+                elif isinstance(value,list) or isinstance(value, str):
+                    return len(value) > len(val)
+        return False
 
 class gte(Rule):
     """
@@ -346,21 +359,17 @@ class gte(Rule):
         Strings, numerics, arrays, and files are evaluated using the same conventions as the 'size' rule.
     """
     name = "gte"
-    def message(self):
-        return self.__doc__.replace("The field under validation","")
-    def passes(self,value):
-        try:
-            if isinstance(value, int):
-                return value >= int(self.values[self.options[0]])
-            elif isinstance(value, InMemoryUploadedFile):
-                return value.size/1000 >= self.values[self.options[0]]/1000
-            elif isinstance(value.list) or isinstance(value, str):
-                return len(value) >= len(self.values[self.options[0]])
-            else:
-                return False
-        except Exception as e:
-            raise e
-            return False
+    def passes(self, value):
+        if len(self.options) > 0 and self.parse_value(self.options[0])[0]:
+            val = self.parse_value(self.options[0])[1]
+            if type(value) == type(val):
+                if isinstance(value, int):
+                    return value >= int(val)
+                elif isinstance(value, InMemoryUploadedFile):
+                    return value.size/1000 >= val/1000
+                elif isinstance(value,list) or isinstance(value, str):
+                    return len(value) >= len(val)
+        return False
 
 
 class image(Rule):
@@ -381,17 +390,16 @@ class _in(Rule):
     """
         The field under validation must be included in the given list of values.
         Since this rule often requires you to implode an array,
-        the Rule::in method may be used to fluently construct the rule:
+        you can use _in() from .rule  to fluently construct the rule:
     """
     name = "in"
     def message(self):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
-        return value in self.options['values']
+        return value in self.options
 
 
 class in_array(Rule):
-    
     """
         The field under validation must exist in anotherfield's values.
     """
@@ -399,11 +407,8 @@ class in_array(Rule):
     def message(self):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
-        try:
-            return value in self.values[self.options[0]]
-        except Exception as e:
-            raise e
-            return False
+        has,val = self.parse_value(self.options[0])
+        return has and value in val
 
 
 class integer(Rule):
@@ -419,7 +424,7 @@ class ip(Rule):
     def passes(self,value):
         r = list()
         for ii in (ipv4,ipv6):
-            ii([])
+            ii = ii()
             ii.set_attribute(self.attribute)
             ii.set_values(self.values)
             r.append(ii.passes(value))
@@ -451,34 +456,36 @@ class ipv6(Rule):
 class _json(Rule):
     "The field under validation must be a valid JSON string."
     name = "json"
-    def json(self,value):
+    def passes(self,value):
         try:
             json.loads(value)
             return True
         except Exception as e:
-            raise e
             return False
    
    
 class lt(Rule):
     """
-        The field under validation must be less than the given field.
-        The two fields must be of the same type. Strings, numerics, arrays, 
-        and files are evaluated using the same conventions as the 'size' rule.
+    The field under validation must be less than the given field.
+    The two fields must be of the same type. Strings, numerics, arrays, 
+    and files are evaluated using the same conventions as the 'size' rule.
     """
     name = "lt"
     def message(self):
         return self.__doc__.replace("The field under validation","")
-    def passes(self,value):
-        if isinstance(value,int):
-            return  value < int(self.values[self.options[0]])
-        elif isinstance(value,InMemoryUploadedFile):
-            return value.size/1000 < self.values[self.options[0]]/1000
-        elif isinstance(value.list) or isinstance(value,str):
-            return len(value) < len(self.values[self.options[0]]) 
-        else:
-            return False
     
+    def passes(self,value):
+        if len(self.options)>0 and self.parse_value(self.options[0])[0]:
+                val = self.parse_value(self.options[0])[1]
+                if type(value) == type(val):
+                    if isinstance(value, int):
+                        return value < val
+                    elif isinstance(value, InMemoryUploadedFile):
+                        return value.size/1000 < val/1000
+                    elif isinstance(value,list) or isinstance(value, str):
+                        return len(value) < len(val)
+        return False
+
     
 class lte(Rule):
     """
@@ -491,19 +498,16 @@ class lte(Rule):
     def message(self):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
-        try:
-            if isinstance(value,int):
-                return  value <= int(self.values[self.options[0]])
-            elif isinstance(value,InMemoryUploadedFile):
-                return value.size/1000 <= self.values[self.options[0]]/1000
-            elif isinstance(value.list) or isinstance(value,str):
-                return len(value) <= len(self.values[self.options[0]]) 
-            else:
-                return False
-        except Exception as e:
-            raise e
-            return False
-            
+        if len(self.options)>0 and self.parse_value(self.options[0])[0]:
+                val = self.parse_value(self.options[0])[1]
+                if type(value) == type(val):
+                    if isinstance(value, int):
+                        return value <= val
+                    elif isinstance(value, InMemoryUploadedFile):
+                        return value.size/1000 <= val/1000
+                    elif isinstance(value,list) or isinstance(value, str):
+                        return len(value) <= len(val)
+        return False    
     
     
 class _max(Rule):
@@ -540,7 +544,6 @@ class mimes(Rule):
     def passes(self,value):
         "The file under validation must have a MIME type corresponding to one of the listed extensions."
         return value.content_type in self.options
-        
 
 
 class _min(Rule):
@@ -587,13 +590,13 @@ class not_regex(Rule):
 
 
 class nullable(Rule):
+    """
+    The field under validation may be null.
+    This is particularly useful when validating primitive
+    such as strings and integers that can contain null values.
+    """
     name = "nullable"
     def passes(self,value):
-        """
-        The field under validation may be null.
-        This is particularly useful when validating primitive
-        such as strings and integers that can contain null values.
-        """
         return value or value == ""  or value is None or value == 0
 
 
@@ -614,10 +617,9 @@ class present(Rule):
 class regex(Rule):
     "The field under validation must match the given regular expression."
     name = "regex"
-    def parse_condition(self):
-        self.cond = self.options[0]
+
     def passes(self,value):
-        return re.search(self.cond,value) is not None
+        return re.search(self.options[0],value) is not None
 
 
 class required(Rule):
@@ -634,7 +636,7 @@ class required(Rule):
         return self.__doc__.replace("The field under validation","")
     def passes(self):
         if isinstance(self.values,dict):
-            return self.parse_value(self.attribute,self.values)[0]
+            return self.parse_value(self.attribute)[0]
         else:
             return all([self.attribute in v for v in  self.values])
 
@@ -657,7 +659,7 @@ class required_if(Rule):
     
     def passes(self):
         try:
-            return sum([1 if self.parse_value(i[0],self.values)[1] == i[1] else 0 for i in self.cond]) == len(self.cond)
+            return sum([1 if self.parse_value(i[0])[1] == i[1] else 0 for i in self.cond]) == len(self.cond)
         except :
             return False
 
@@ -679,7 +681,7 @@ class required_unless(Rule):
     
     def passes(self):
         try:
-            return not all([self.parse_value(i[0],self.values)[0] == i[1] for i in self.cond])
+            return not all([self.parse_value(i[0])[0] == i[1] for i in self.cond])
         except :
             return False
 
@@ -694,7 +696,7 @@ class required_with(Rule):
         return self.__doc__.replace("The field under validation","")
     def passes(self):
         try:
-            return sum([1 if self.parse_value(i,self.values) else 0  for i in self.options]) > 0
+            return sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) > 0
         except :
             return False
 
@@ -706,7 +708,7 @@ class required_with_all(Rule):
         return self.__doc__.replace("The field under validation","")
     def passes(self):
         try:
-            return sum([1 if self.parse_value(i,self.values)[0] else 0  for i in self.options]) == len(self.options)
+            return sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) == len(self.options)
         except :
             return False
 
@@ -738,7 +740,7 @@ class required_without_all(Rule):
         return self.__doc__.replace("The field under validation","")
     def passes(self,value):
         try:
-            return sum([1 if not self.parse_value(i,self.values)[0] else 0  for i in self.options]) == len(self.options)
+            return sum([1 if not self.parse_value(i)[0] else 0  for i in self.options]) == len(self.options)
         except :
             return False
 
@@ -747,7 +749,7 @@ class same(Rule):
     "The given field must match the field under validation."
     name = "same"
     def passes(self,value):
-        o_i,o_v = self.parse_value(self.options[0],self.values)
+        o_i,o_v = self.parse_value(self.options[0])
         return o_i and value == o_v
 
 

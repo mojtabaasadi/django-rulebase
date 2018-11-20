@@ -10,7 +10,6 @@ def sample_request(request,valid,errors):
         return HttpResponseBadRequest() 
 
 class Request:
-    s = ''
     view = sample_request
     validator = Validator
     def __init__(self):
@@ -29,10 +28,7 @@ class Request:
                 body = getattr(request,request.method)
             valid = self.run_validator(self,body)
             return self.view(request,valid,self.validator.errors)
-                
         return csrf_exempt(view_func)
-        
-        
     
     def run_validator(self,data):
         rules = self.rules(self) if hasattr(self,"rules") and callable(self.rules) else None
@@ -41,15 +37,11 @@ class Request:
         valid = True
         if not isinstance(rules,dict):
             raise Exception("rules must be of type dict")
-        for atrr in rules.keys():
-            if isinstance(self.validator,Validator):
-                self.validator.run_validation(atrr,rules[atrr],data)
-                valid &= self.validator.valid
-            else:
-                validator = self.validator()
-                validator.run_validation(atrr,rules[atrr],data)
-                valid &= validator.valid
+        if isinstance(self.validator,Validator):
+            self.validator.run_validation(data)
+            valid &= self.validator.valid
+        else:
+            validator = self.validator(rules)
+            validator.run_validation(data)
+            valid &= validator.valid
         return valid
-        
-
-
