@@ -1,3 +1,7 @@
 .tox/
 *.pyc
 *.egg-info/
+.vscode/
+dist/
+.pytest_cache
+build/

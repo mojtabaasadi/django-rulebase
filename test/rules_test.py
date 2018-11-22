@@ -2,7 +2,8 @@ import os,sys
 BASE_DIR = os.path.abspath(__file__ + "/../../django_rulebase")
 sys.path.append(BASE_DIR)
 from rule import *
-from rule import _in,_min,_max,_json
+from rule import _in,_min,_max,_json,_uuid
+from django.core.files.uploadedfile import InMemoryUploadedFile
 
 def django_env():
     from django.conf import settings
@@ -47,7 +48,7 @@ def test_alpha():
     
 def test_alpha_dash():
     rule = alpha_dash([])
-    assert rule.passes("oaudisad99ds9") == True
+    assert rule.passes("oaudi-Ssad99ds9") == True
     assert rule.passes("\\\\sl;d*&*&%^") == False
     
 def test_alpha_num():
@@ -147,9 +148,10 @@ def test_exists():
     rule = exists(["test","title"])
     assert rule.passes("some") == True
     assert rule.passes("another") == False
+    rule = exists(["test1","title"])
+    assert rule.passes("another") == False
 
 def test_file():
-    from django.core.files.uploadedfile import InMemoryUploadedFile
     rule = file()
     assert rule.passes(InMemoryUploadedFile(*[None for i in range(7)])) == True
     assert rule.passes(dict()) == False
@@ -176,6 +178,11 @@ def test_in():
     rule = _in([2,3,57,"ee"])
     assert rule.passes("ee") == True
     assert rule.passes("57") == False
+
+def test_in():
+    rule = not_in([2,3,57,"ee"])
+    assert rule.passes("eee") == True
+    assert rule.passes(57) == False
     
 def test_in_array():
     rule = in_array(["field"])
@@ -225,107 +232,136 @@ def test_lte():
     assert rule.passes(["q",2]) == True
     assert rule.passes(["swq","qqaa",'']) == False
     
-# def test_max():
-#     rule = _max()
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_max():
+    rule = _max(3)
+    assert rule.passes('27g') == True
+    assert rule.passes([0,3,2,3]) == False
     
-# def test_mimetypes():
-#     rule = mimetypes()
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_mimetypes():
+    rule = mimetypes('text/csv')
+    assert rule.passes(InMemoryUploadedFile(None,None,None,"text/csv",None,None)) == True
+    assert rule.passes(InMemoryUploadedFile(None,None,None,"text/plain",None,None)) == False
     
-# def test_mimes():
-#     rule = mimes()
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_mimes():
+    rule = mimes(['jpeg','png'])
+    assert rule.passes(
+        InMemoryUploadedFile(None,None,None,"image/jpeg",None,None)
+    ) == True
+    assert rule.passes(
+        InMemoryUploadedFile(None,None,None,"image/gif",None,None)
+    ) == False
     
-# def test_nullable():
-#     rule = nullable([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_nullable():
+    rule = nullable()
+    assert rule.passes('') == True
     
-# def test_numeric():
-#     rule = numeric([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_numeric():
+    rule = numeric()
+    assert rule.passes('2354435') == True
+    assert rule.passes('3467a') == False
     
-# def test_present():
-#     rule = present([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_present():
+    rule = present()
+    rule.set_values({'field':''})
+    rule.set_attribute("field")
+    assert rule.passes() == True
+    rule.set_attribute("another_field")
+    assert rule.passes() == False
     
-# def test_regex():
-#     rule = regex([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_regex():
+    rule = regex(['^[a-z]{0,66}\/[a-z]{0,66}$'])
+    assert rule.passes('image/jpeg') == True
+    assert rule.passes("233/3444") == False
     
-# def test_required():
-#     rule = required([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_required():
+    rule = present()
+    rule.set_values({'field':''})
+    rule.set_attribute("field")
+    assert rule.passes() == True
+    rule.set_attribute("another_field")
+    assert rule.passes() == False
     
-# def test_required_if():
-#     rule = required_if([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_required_if():
+    rule = required_if(['foo',"1"])
+    rule.set_values({"foo":"1","bar":1234})
+    rule.set_attribute('bar')
+    assert rule.passes() == True
+    rule.set_values({"foo1":"q","bar":1234})
+    assert rule.passes() == False
     
-# def test_required_unless():
-#     rule = required_unless([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_required_unless():
+    rule = required_unless(['foo',"q"])
+    rule.set_values({"foo":"q"})
+    rule.set_attribute('bar')
+    assert rule.passes() == True
+    rule.set_values({"foo":"qa","bar":""})
+    assert rule.passes() == True
+
+def test_required_with():
+    rule = required_with(['foo','chi'])
+    rule.set_values({"foo":"","bar":1234})
+    rule.set_attribute('bar')
+    assert rule.passes() == True
+    rule.set_values({"bar":1234})
+    assert rule.passes() == False
+
+def test_required_with_all():
+    rule = required_with_all(['foo','chi'])
+    rule.set_values({"foo":"","chi":2,"bar":1234})
+    rule.set_attribute('bar')
+    assert rule.passes() == True
+    rule.set_values({"foo":"","bar":1234})
+    assert rule.passes() == False
+
+def test_required_without():
+    rule = required_without(["foo","bar"])
+    rule.set_values({"baz":"foo"})
+    rule.set_attribute('baz')
+    assert rule.passes() == True
+    rule.set_values({"bar":2,"baz":"foo"})
+    assert rule.passes() == True
     
-# def test_required_with():
-#     rule = required_with([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_required_without_all():
+    rule = required_without_all(["foo","bar"])
+    rule.set_values({"baz":"foo"})
+    rule.set_attribute('baz')
+    assert rule.passes() == True
+    rule.set_values({"bar":2,"baz":"foo"})
+    assert rule.passes() == False
     
-# def test_required_with_all():
-#     rule = required_with_all([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_same():
+    rule = same(["bar"])
+    rule.set_values({"bar":"some","foo":"bingo"})
+    assert rule.passes("some") == True
+    assert rule.passes("bingo") == False
     
-# def test_required_without():
-#     rule = required_without([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_size():
+    rule = size("10")
+    assert rule.passes("a"*10) == True
+    assert rule.passes(10) == True
     
-# def test_required_without_all():
-#     rule = required_without_all([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_string():
+    rule = string()
+    assert rule.passes("") == True
+    assert rule.passes(int('10')) == False
     
-# def test_same():
-#     rule = same([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_timezone():
+    rule = timezone()
+    assert rule.passes("Asia/Tehran") == True
+    assert rule.passes("ASAIA/TEHRAN") == False
     
-# def test_size():
-#     rule = size([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_unique():
+    rule = unique(["test","title"])
+    assert rule.passes("unique") == True
+    assert rule.passes("some") == False
     
-# def test_string():
-#     rule = string([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_url():
+    rule = url()
+    assert rule.passes('https://packaging.python.org/guides/using-testpypi/') == True
+    assert rule.passes('python-org/guides\\using-testpypi/') == False
     
-# def test_timezone():
-#     rule = timezone([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
-    
-# def test_unique():
-#     rule = unique([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
-    
-# def test_url():
-#     rule = url([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
-    
-# def test_uuid():
-#     rule = uuid([])
-#     assert rule.passes() == True
-#     assert rule.passes == False
+def test_uuid():
+    rule = _uuid()
+    assert rule.passes('c14fdc68-ee25-11e8-882e-cc52af04d017') == True
+    assert rule.passes('6fa459ea-ee8a-3ca4-894e-db77e160355e') == True
+    assert rule.passes('6fa459ea-ff8a_3ca4-904e-db77e160355e') == False

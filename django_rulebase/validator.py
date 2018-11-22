@@ -60,7 +60,7 @@ builtin_rules = {
     "timezone":timezone,
     "unique":unique,
     "url":url,
-    "uuid":uuid,
+    "uuid":_uuid,
 }
 
 class Validator:

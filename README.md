@@ -114,7 +114,7 @@ The field under validation must be a value after a given date. The dates will be
 
 ### after-or-equal:date
 
-The field under validation must be a value after or equal to the given date. For more information, see the after rule.
+The field under validation must be a value after or equal to the given date. For more information, see the [after rule](#afterdate).
 
 ### alpha
 
@@ -134,15 +134,15 @@ The field under validation must be a list array.
 
 ### before:date
 
-The field under validation must be a value preceding the given date. The dates will be passed into [dateparser](https://dateparser.readthedocs.io). In addition, like the after rule, the name of another field under validation may be supplied as the value of date.
+The field under validation must be a value preceding the given date. The dates will be passed into [dateparser](https://dateparser.readthedocs.io). In addition, like the [after rule](#afterdate), the name of another field under validation may be supplied as the value of date.
 
 ### before-or-equal:date
 
-The field under validation must be a value preceding or equal to the given date. The dates will be passed into [dateparser](https://dateparser.readthedocs.io). In addition, like the after rule, the name of another field under validation may be supplied as the value of date.
+The field under validation must be a value preceding or equal to the given date. The dates will be passed into [dateparser](https://dateparser.readthedocs.io). In addition, like the [after rule](#afterdate), the name of another field under validation may be supplied as the value of date.
 
 ### between:min,max
 
-The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
+The field under validation must have a size between the given min and max. Strings, numerics, arrays, and files are evaluated in the same fashion as the [size rule](#sizevalue).
 
 ### boolean
 
@@ -194,27 +194,16 @@ The field under validation must be formatted as an e-mail address.
 
 The field under validation must exist on a given database table.
 
-  
-
 Basic Usage Of Exists Rule
 ```python
 'state' : 'exists:states'
 ```
 If the column option is not specified, the field name will be used.
 
-  
-
 Specifying A Custom Column Name
 ```python
 'state' : 'exists:states,abbreviation'
 ```
-Occasionally, you may need to specify a specific database connection to be used for the exists query. You can accomplish this by prepending the connection name to the table name using "dot" syntax:
-
-```python
-'email' : 'exists:connection.staff,email'
-```
-
-If you would like to customize the query executed by the validation rule, you may use the Rule class to fluently define the rule. In this example, we'll also specify the validation rules as an array instead of using the | character to delimit them:
 
 ### file
 
@@ -226,11 +215,11 @@ The field under validation must not be empty when it is present.
 
 ### gt:field
 
-The field under validation must be greater than the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the size rule.
+The field under validation must be greater than the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the [size rule](#sizevalue).
 
 ### gte:field
 
-The field under validation must be greater than or equal to the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the size rule.
+The field under validation must be greater than or equal to the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the [size rule](#sizevalue).
 
 ### image
 
@@ -273,15 +262,15 @@ The field under validation must be a valid JSON string.
 
 ### lt:field
 
-The field under validation must be less than the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the size rule.
+The field under validation must be less than the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the [size rule](#sizevalue).
 
 ### lte:field
 
-The field under validation must be less than or equal to the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the size rule.
+The field under validation must be less than or equal to the given field. The two fields must be of the same type. Strings, numerics, arrays, and files are evaluated using the same conventions as the [size rule](#sizevalue).
 
 ### max:value
 
-The field under validation must be less than or equal to a maximum value. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
+The field under validation must be less than or equal to a maximum value. Strings, numerics, arrays, and files are evaluated in the same fashion as the [size rule](#sizevalue).
 
 ### mimetypes:text/plain,...
 
@@ -309,11 +298,11 @@ Even though you only need to specify the extensions, this rule actually validate
 
   
 
-A full listing of MIME types and their corresponding extensions may be found at the following location: https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types
+A full listing of MIME types and their corresponding extensions may be found at the following location: [read more](https://svn.apache.org/repos/asf/httpd/httpd/trunk/docs/conf/mime.types)
 
 ### min:value
 
-The field under validation must have a minimum value. Strings, numerics, arrays, and files are evaluated in the same fashion as the size rule.
+The field under validation must have a minimum value. Strings, numerics, arrays, and files are evaluated in the same fashion as the [size rule](#sizevalue).
 
 ### not-in:foo,bar,...
 
@@ -353,10 +342,10 @@ The field under validation must match the given regular expression.
 
   
 
-Internally, this rule uses the re.search. The pattern specified should obey the same formatting required by preg_match and thus also include valid delimiters. For example:
+Internally, this rule uses the re.search. The pattern specified should obey the same formatting required by re.compile and thus also include valid delimiters. For example:
 
 ```python
-'email' : 'regex:/^.+@.+$/i'.
+'email' : 'regex:^.+@.+$'.
 ```
 
 Note: When using the regex / not_regex patterns, it may be necessary to specify rules in an array instead of using pipe delimiters, especially if the regular expression contains a pipe character.
@@ -365,14 +354,10 @@ Note: When using the regex / not_regex patterns, it may be necessary to specify 
 
 The field under validation must be present in the input data and not empty. A field is considered "empty" if one of the following conditions are true:
 
-  
-
 The value is null.
 The value is an empty string.
 The value is an empty array or empty Countable object.
 The value is an uploaded file with no path.
-
-  
 
 ### required-if:anotherfield,value,...
 
@@ -408,7 +393,7 @@ The field under validation must have a size matching the given value. For string
 
 ### string
 
-The field under validation must be a string. If you would like to allow the field to also be null, you should assign the nullable rule to the field.
+The field under validation must be a string. If you would like to allow the field to also be null, you should assign the [nullable rule](#nullable) to the field.
 
 ### timezone
 
