@@ -1,3 +1,4 @@
 dateparser==0.7.0
 dnspython==1.50.0
 pytz
+django>=1.8
