@@ -286,9 +286,11 @@ def test_required_if():
     rule.set_values({"foo":"1","bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
-    rule.set_values({"foo1":"q","bar":1234})
+    rule.set_values({"foo":"q"})
+    assert rule.passes() == True
+    rule.set_values({"foo":"1"})
     assert rule.passes() == False
-    
+
 def test_required_unless():
     rule = required_unless(['foo',"q"])
     rule.set_values({"foo":"q"})
@@ -302,7 +304,7 @@ def test_required_with():
     rule.set_values({"foo":"","bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
-    rule.set_values({"bar":1234})
+    rule.set_values({"chi":1234})
     assert rule.passes() == False
 
 def test_required_with_all():
@@ -310,7 +312,7 @@ def test_required_with_all():
     rule.set_values({"foo":"","chi":2,"bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
-    rule.set_values({"foo":"","bar":1234})
+    rule.set_values({"foo":"","chi":1234})
     assert rule.passes() == False
 
 def test_required_without():

@@ -65,7 +65,7 @@ class Rule:
         return message.format(**{
             'rule':self.name,
             'attribute':self.attribute,
-            'options':','.join(self.options),
+            'options':self.options,
             'value':value
         })
 
@@ -679,15 +679,17 @@ class required_if(Rule):
     """
     name = "required-if"
     def message(self):
-        return "is required if {} ".format(",".join(options))
+        return "is required if {} ".format(",".join(self.options))
 
     def passes(self):
         options = [(self.options[i] ,self.options[i+1]) for i in range(int(len(self.options)/2)) ]
-        valid = True
+        is_present = True
         for (field,value) in options:
             has,val = self.parse_value(field)
-            valid &= has and value==val
-        return  valid and self.parse_value(self.attribute)[0]
+            # type confusion bescuase values provided in options are always string -> needs notice
+            is_present &= has and val == value
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return is_attr_present if is_present else True
 
 
 class required_unless(Rule):
@@ -697,16 +699,18 @@ class required_unless(Rule):
     """
     name = "required-unless"
     
-    def message():
-        return " must be present and not empty  unless {}".format(','.join(self.options))
+    def message(self):
+        return "must be present and not empty unless {}".format(','.join(self.options))
 
     def passes(self):
         options = [(self.options[i] ,self.options[i+1]) for i in range(int(len(self.options)/2)) ]
-        valid = True
+        is_unless_present = True
         for (field,value) in options:
+            # type confusion bescuase values provided in options are always string -> needs notice
             has,val = self.parse_value(field)
-            valid &= has and value == val
-        return self.parse_value(self.attribute)[0] or valid
+            is_unless_present &= has and value == val
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return is_attr_present if not is_unless_present else True
 
 class required_with(Rule):
     """
@@ -714,21 +718,25 @@ class required_with(Rule):
     if any of the other specified fields are present.
     """
     name = "required-with"
-    def message():
+    def message(self):
         return " must be present and not empty with {}".format(','.join(self.options))
     
     def passes(self):
-        return sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) > 0 and self.parse_value(self.attribute)[0]
+        is_with_present = sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) > 0
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return  is_attr_present if is_with_present else True
         
 
 class required_with_all(Rule):
-    """The field under validation must be present and not empty {options} are present."""
+    """The field under validation must be present and not empty when all are present."""
     name = "required-with-all"
-    def message():
+    def message(self):
         return " must be present and not empty with all {} field".format(','.join(self.options))
 
     def passes(self):
-        return sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) == len(self.options) and self.parse_value(self.attribute)[0]
+        is_all_present = sum([1 if self.parse_value(i)[0] else 0  for i in self.options]) == len(self.options)
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return  is_attr_present if is_all_present else True
         
 
 class required_without(Rule):
@@ -737,17 +745,17 @@ class required_without(Rule):
     only when any of the other specified fields are not present.
     """
     name = "required-without"
-    def message():
+    def message(self):
         return " must be present and not empty only when any of {} are not present".format(','.join(self.options))
 
     def passes(self):
-        return sum([1 if not self.parse_value(i)[0] else 0  for i in self.options]) > 0  and self.parse_value(self.attribute)[0]
+        is_without_not_present = sum([1 if not self.parse_value(i)[0] else 0  for i in self.options]) > 0 
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return  is_attr_present if is_without_not_present else False
         
 
 class required_without_all(Rule):
-    """
-        The field under validation must be present and not empty only when all
-        of the other specified fields are not present.
+    """The field under validation must be present and not empty only when all . of the other specified fields are not present.
     """
     name = "required-without-all"
     
@@ -755,8 +763,10 @@ class required_without_all(Rule):
         return " must be present and not empty only when {} are not present".format(','.join(self.options))
 
     def passes(self):
-        print(all([not self.parse_value(i)[0]  for i in self.options]))
-        return all([not self.parse_value(i)[0]  for i in self.options])
+        is_all_not_present =  all([not self.parse_value(i)[0]  for i in self.options])
+        is_attr_present = self.parse_value(self.attribute)[0]
+        return  is_attr_present if is_all_not_present else False
+
         
 
 class same(Rule):
@@ -798,7 +808,7 @@ class string(Rule):
     """The field under validation must be a string.If you would like to allow the field to also be null, you should assign the nullable rule to the field."""
     name = "string"
     def message(self):
-        return "{atribute} must be string"
+        return "{attribute} must be string"
     def passes(self,value):
         return isinstance(value,str)
 
@@ -807,7 +817,7 @@ class timezone(Rule):
     """The field under validation must be a valid timezone identifier according to the pytz module"""
     name = "timezone"
     def message(self):
-        return self.__doc__.replace("The field under validation","{atribute}")
+        return "{attribute} must be a valid timezone"
     def passes(self,value):
         return value in pytz.all_timezones
 
@@ -816,7 +826,7 @@ class unique(Rule):
     """The field under validation must be unique in a given database table.  If the column option is not specified, the field name will be used."""
     name = "unique"
     def message(self):
-        return "{atribute} must be unique in {optiond[0]},{optiond[1]} field"
+        return "{attribute} must be unique in {optiond[0]},{optiond[1]} field"
     def passes(self,value):
         table = self.options[0]
         column = self.options[1] if self.options[1] != None else 'name'

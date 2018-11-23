@@ -1,5 +1,5 @@
 from .rule import *
-from .rule import _json,_in,_max,_min
+from .rule import _json,_in,_max,_min,_uuid
 
 builtin_rules = {
     "accepted":accepted,
@@ -84,7 +84,7 @@ class Validator:
                     rule.parse_condition()
                 has_value,value = rule.parse_value(attribute)
                 if isinstance(rule,(required,required_if,required_unless,required_with,required_with_all,required_without,required_without_all)):
-                    valid = rule.passes() and has_value
+                    valid = rule.passes()
                 else:
                     if isinstance(value,list):
                         valid = all([rule.passes(v) for v in value])
@@ -108,7 +108,7 @@ class Validator:
         if ":" in rule_string:
             _end_n = rule_string.find(":")
             name = rule_string[:_end_n] 
-            options = rule_string[_end_n+1:].split(",")
+            options = rule_string[_end_n + 1:].split(",")
         else :
             name = rule_string
             options = []
