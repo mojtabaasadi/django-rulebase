@@ -1,8 +1,14 @@
+# Django Rule-base Validator [![image](https://img.shields.io/pypi/v/django-rulebase.svg)](https://pypi.python.org/pypi/django-rulebase) [![image](https://img.shields.io/pypi/pyversions/django-rulebase.svg)](https://pypi.python.org/pypi/django-rulebase) [![image](https://travis-ci.org/mojtabaasadi/django-rulebase.svg?branch=master)](https://travis-ci.org/mojtabaasadi/django-rulebase)
 
-# Django Rule-base Validator
+
 inspired by laravel Requests , for making django validations painless.
 
+
 #### to use:
+```
+pip install django-rulebase
+```
+
 in app.views:
 ```python
 from django.http import HttpResponse,HttpResponseBadRequest
@@ -319,7 +325,7 @@ The field under validation must not match the given regular expression.
 Internally, this rule uses the re.search. The pattern specified should obey the same formatting required by preg_match and thus also include valid delimiters. For example:
 
 ```python
-'email' : 'not_regex:/^.+$/i'.
+'email' : 'not_regex:^.+$'.
 ```
 
 Note: When using the regex / not_regex patterns, it may be necessary to specify rules in an array instead of using pipe delimiters, especially if the regular expression contains a pipe character.

@@ -18,6 +18,7 @@ class Rule:
         if isinstance(options,list):
             self.options = options
         else:
+            # some rule options shoudldnt split by , like regex anf not-regex
             self.options = options.split(",") if isinstance(options,str) else [options]
     
     def passes(self,value):

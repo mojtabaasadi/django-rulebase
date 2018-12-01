@@ -107,7 +107,8 @@ class Validator:
     def parse_rule(self,rule_string):
         if ":" in rule_string:
             _end_n = rule_string.find(":")
-            name = rule_string[:_end_n] 
+            name = rule_string[:_end_n]
+            # some rule options shoudldnt split by ',' like regex 
             options = rule_string[_end_n + 1:].split(",")
         else :
             name = rule_string
@@ -130,7 +131,7 @@ class Validator:
                 try:
                     _rules[i] = builtin_rules[name](options)
                 except Exception as e:
-                    if "KeyError" in str(e):raise Exception("{} should be reggitered in this validation".format(name))
+                    if "KeyError" in str(e):raise Exception("{} should be registered in this validation".format(name))
             if not isinstance(_rules[i],Rule):
                 raise Exception(" {}  is not a valid rule in validation".format(str(_rules[i])))
         return _rules
