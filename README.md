@@ -12,7 +12,7 @@ pip install django-rulebase
 in app.views:
 ```python
 from django.http import HttpResponse,HttpResponseBadRequest
-from django-rulebase import Request  
+from django_rulebase import Request  
 
 def  good_request(request,is_valid,errors):
 	if is_valid:return HttpResponse("good request")
@@ -30,7 +30,7 @@ in app.urls
 from django.conf.urls import url
 from .views import CustomRequest  
 urlpatterns = [
-	url(r'^validate/$', CustomeRequest.asView()),
+	url(r'^validate/$', CustomRequest.asView()),
 ]
 ```  
 #### with custom rule :

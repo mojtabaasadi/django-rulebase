@@ -83,10 +83,10 @@ class Validator:
                 if hasattr(rule,'parse_condition') and callable(rule.parse_condition):
                     rule.parse_condition()
                 has_value,value = rule.parse_value(attribute)
-                if isinstance(rule,(required,required_if,required_unless,required_with,required_with_all,required_without,required_without_all)):
+                if isinstance(rule,(present,required,required_if,required_unless,required_with,required_with_all,required_without,required_without_all)):
                     valid = rule.passes()
                 else:
-                    if isinstance(value,list):
+                    if isinstance(value,list) and "*" in rule.attribute :
                         valid = all([rule.passes(v) for v in value])
                     else:
                         valid = rule.passes(value)
@@ -109,7 +109,7 @@ class Validator:
             _end_n = rule_string.find(":")
             name = rule_string[:_end_n]
             # some rule options shoudldnt split by ',' like regex 
-            options = rule_string[_end_n + 1:].split(",")
+            options = rule_string[_end_n + 1:]
         else :
             name = rule_string
             options = []

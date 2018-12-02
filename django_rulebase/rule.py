@@ -14,11 +14,14 @@ class Rule:
     values = None
     name = "Rule"
     attribute = ""
+    
     def __init__(self,options=[]):
+        self.parse_options(options)
+    
+    def parse_options(self,options):
         if isinstance(options,list):
             self.options = options
         else:
-            # some rule options shoudldnt split by , like regex anf not-regex
             self.options = options.split(",") if isinstance(options,str) else [options]
     
     def passes(self,value):
@@ -61,7 +64,7 @@ class Rule:
         else:
             self.values = values
 
-    def parse_message(self,value):
+    def parse_message(self,value = None):
         message = self.message() if callable(self.message) else self.message
         return message.format(**{
             'rule':self.name,
@@ -161,6 +164,7 @@ class array(Rule):
     "The field under validation must be a list or tuple"
     name = "array"
     message = "must be a list or tuple"
+    
     def passes(self,value):
         return isinstance(value,list) or isinstance(value,tuple)
 
@@ -287,7 +291,8 @@ class digits(Rule):
     name = "digits"
     message = "must be numeric and must have an exact length of {options[0]}"
     def passes(self,value):
-        return isinstance(value,str) and value.isdigit()  and len(value) == self.options[0]
+        if len(self.options)==0: raise Exception("digits rule needs length option")
+        return isinstance(value,str) and value.isdigit()  and len(value) == int(self.options[0])
 
     
 class digits_between(Rule):
@@ -295,7 +300,7 @@ class digits_between(Rule):
     name = "digits-between"
     message = "must be numeric and must have a length between the given {options[0]} and {options[1]}."
     def passes(self,value):
-        min,max = self.options[0],self.options[1]
+        min,max = int(self.options[0]),int(self.options[1])
         return isinstance(value,str) and value.isdigit() and len(str(value)) >= int(min)  and len(str(value)) <= int(max)
 
 
@@ -305,7 +310,13 @@ class distinct(Rule):
     name = "distinct"
     message = "must not have any duplicate values."
     def passes(self,value):
-        return isinstance(value,list) and len(value) == len(list(set(value)))
+        valid = True
+        dict_vals = [v for v in value if  isinstance(v,dict)]
+        if len(dict_vals) > 1:
+            for vv in dict_vals:
+                valid &= vv not in dict_vals.remove(vv)
+        value = [v for v in value if not isinstance(v,dict)]
+        return valid and isinstance(value,list) and len(value) == len(list(set(value)))
 
 
 class email(Rule):
@@ -314,7 +325,7 @@ class email(Rule):
     message = "must be formatted as an e-mail address."
     def passes(self,value):
         reg = r"^(([^<>()\[\]\.,;:\s@\"]+(\.[^<>()\[\]\.,;:\s@\"]+)*)|(\".+\"))@(([^<>()[\]\.,;:\s@\"]+\.)+[^<>()[\]\.,;:\s@\"]{2,})$"
-        rr = regex([reg])
+        rr = regex(reg)
         return rr.passes(value)
 
 class exists(Rule):
@@ -324,7 +335,7 @@ class exists(Rule):
     """
     name = "exists"
     def message(self):
-        "must exist on {options[0]} column {options[1]}"
+        return "must exist on {options[0]} column {options[1]}"
     
     def passes(self,value):
         table = self.options[0]
@@ -364,7 +375,7 @@ class gt(Rule):
             val = self.parse_value(self.options[0])[1]
             if type(value) == type(val):
                 if isinstance(value, int):
-                    return value > int(val)
+                    return value > val
                 elif isinstance(value, InMemoryUploadedFile):
                     return value.size/1000 > val/1000
                 elif isinstance(value,list) or isinstance(value, str):
@@ -414,7 +425,8 @@ class _in(Rule):
     """
     name = "in"
     def message(self):
-        return "must be in {}".format(",",join(self.options))
+        return "must be in {}".format(",".join([str(i) for i in self.options]))
+    
     def passes(self,value):
         return value in self.options
 
@@ -458,7 +470,7 @@ class ipv4(Rule):
     name = "ipv4"
     def passes(self,value):
         reg = r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-        rr = regex([reg])
+        rr = regex(reg)
         rr.set_attribute(self.attribute)
         rr.set_values(self.values)
         return rr.passes(value)
@@ -470,7 +482,7 @@ class ipv6(Rule):
     message = "must be an IPv6 address."
     def passes(self,value):
         reg = r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
-        rr = regex([reg])
+        rr = regex(reg)
         rr.set_attribute(self.attribute)
         rr.set_values(self.values)
         return rr.passes(value)
@@ -543,15 +555,15 @@ class _max(Rule):
     """
     name = "max"
     def message(self):
-        "must be less than or equal to a {options[0]}"
+        return "must be less than or equal to a {options[0]}"
     def passes(self,value):
-        if isinstance(self.options[0],int) :
-            if isinstance(value,int):
-                return  value <= self.options[0]
-            elif isinstance(value,InMemoryUploadedFile):
-                return value.size/1000 <= self.options[0]
-            elif isinstance(value,list) or isinstance(value,str):
-                return len(value) <= int(self.options[0])
+        val = int(self.options[0])
+        if isinstance(value,int):
+            return  value <= val
+        elif isinstance(value,InMemoryUploadedFile):
+            return value.size/1000 <= val
+        elif isinstance(value,list) or isinstance(value,str):
+            return len(value) <= val
         return False
 
 
@@ -586,13 +598,13 @@ class _min(Rule):
         return "must have a minimum {options[0]}"
 
     def passes(self,value):
-        if isinstance(self.options[0],int) :
-            if isinstance(value,int):
-                return  value >= self.options[0]
-            elif isinstance(value,InMemoryUploadedFile):
-                return value.size/1000 >= self.options[0]
-            elif isinstance(value,list) or isinstance(value,str):
-                return len(value) >= int(self.options[0])
+        val = int(self.options[0])
+        if isinstance(value,int):
+            return  value >= val
+        elif isinstance(value,InMemoryUploadedFile):
+            return value.size/1000 >= val
+        elif isinstance(value,list) or isinstance(value,str):
+            return len(value) >= val
         return False          
 
 
@@ -604,7 +616,7 @@ class not_in(Rule):
     name = "not-in"
 
     def message(self):
-        return "must not be included in {}".format(",".join(self.options))
+        return "must not be included in {}".format(",".join([str(i) for i in self.options]))
     
     def passes(self,value):
         return value not in self.options
@@ -614,6 +626,12 @@ class not_regex(Rule):
     "The field under validation must not match the given regular expression."
     name = "not-regex"
     message = "must not match the {options[0]}"
+    def parse_options(self,options):
+        if isinstance(options,list):
+            self.options = options
+        else:
+            self.options = [options]
+    
     def passes(self,value):
         return re.search(re.compile(self.options[0]),value) is None
 
@@ -647,9 +665,17 @@ class present(Rule):
 
 
 class regex(Rule):
-    "The field under validation must match the given regular expression."
+    " the field under validation must match the given regular expression."
     name = "regex"
     message = "must match '{options[0]}'"
+    
+    def parse_options(self,options):
+        if isinstance(options,list):
+            self.options = options
+        else:
+            self.options = [options]
+    
+    
     def passes(self,value):
         return re.search(re.compile(self.options[0]),value) is not None
 
@@ -827,7 +853,7 @@ class unique(Rule):
     """The field under validation must be unique in a given database table.  If the column option is not specified, the field name will be used."""
     name = "unique"
     def message(self):
-        return "{attribute} must be unique in {optiond[0]},{optiond[1]} field"
+        return "{attribute} must be unique in {options[0]},{options[1]} field"
     def passes(self,value):
         table = self.options[0]
         column = self.options[1] if self.options[1] != None else 'name'
@@ -846,7 +872,7 @@ class url(Rule):
     message = " must be a valid URL."
     def passes(self,value):
         reg = r"^(?:(?:(?:https?|ftp):)?\/\/)(?:\S+(?::\S*)?@)?(?:(?!(?:10|127)(?:\.\d{1,3}){3})(?!(?:169\.254|192\.168)(?:\.\d{1,3}){2})(?!172\.(?:1[6-9]|2\d|3[0-1])(?:\.\d{1,3}){2})(?:[1-9]\d?|1\d\d|2[01]\d|22[0-3])(?:\.(?:1?\d{1,2}|2[0-4]\d|25[0-5])){2}(?:\.(?:[1-9]\d?|1\d\d|2[0-4]\d|25[0-4]))|(?:(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)(?:\.(?:[a-z\u00a1-\uffff0-9]-*)*[a-z\u00a1-\uffff0-9]+)*(?:\.(?:[a-z\u00a1-\uffff]{2,})))(?::\d{2,5})?(?:[/?#]\S*)?$"
-        return regex([reg]).passes(value)
+        return regex(reg).passes(value)
 
 
 class _uuid(Rule):

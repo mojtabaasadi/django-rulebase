@@ -8,3 +8,5 @@ build/
 django_rulebase.egg-info
 .vscode.md
 issues\.vscode\.md
+
+\.pypirc

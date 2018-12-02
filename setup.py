@@ -5,11 +5,16 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="django_rulebase",
-    version="0.0.6",
+    version="0.0.8",
     author="Mojtaba Asadi",
     author_email="m.asadi.al@outlook.com",
     description="Django rule base validation , inspired by laravel Request",
     long_description=long_description,
+    install_requires=[
+        "dateparser",
+        "dnspython",
+        "pytz","django"
+    ],
     long_description_content_type="text/markdown",
     url="https://github.com/mojtabaasadi/django-rulebase",
     packages=setuptools.find_packages(),
