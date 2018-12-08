@@ -114,7 +114,7 @@ class Validator:
             _end_n = rule_string.find(":")
             name = rule_string[:_end_n]
             # some rule options shoudldnt split by ',' like regex 
-            options = rule_string[_end_n + 1:]
+            options = [rule_string[_end_n + 1:]]
         else :
             name = rule_string
             options = []

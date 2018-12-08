@@ -10,3 +10,5 @@ django_rulebase.egg-info
 issues\.vscode\.md
 
 \.pypirc
+
+django_rulebase/__pycache__/

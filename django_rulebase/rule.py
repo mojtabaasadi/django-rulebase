@@ -4,7 +4,7 @@ import dns.resolver
 from uuid import UUID
 from dateparser import parse
 from django.db import connection,connections
-from django.db.models import Model
+from django.db.models.base import ModelBase
 
 
 
@@ -21,6 +21,7 @@ class Rule:
     
     def parse_options(self,*args):
         if  len(args)>1:
+
             self.options = args
         elif len(args)==1:
             self.options = args[0].split(",") if isinstance(args[0],str) else args
@@ -116,7 +117,7 @@ class after(Rule):
             if not has_val:val = self.options[0]
             return parse(value) > parse(val)
         except Exception as e:
-            raise e
+            # raise e
             return False
 
 
@@ -344,8 +345,8 @@ class exists(Rule):
     def passes(self,value):
         table = self.options[0]
         column = self.options[1] if self.options[1] != None else 'name'
-        if isinstance(self.options[0],Model):
-            return self.options[0].objects.get(**{self.options[1]:value}) is not None
+        if isinstance(self.options[0],ModelBase):
+            return len(self.options[0].objects.filter(**{self.options[1]:value})) > 0
         try:
             if "." in table:
                 cr = connections[table.split(".")[0]].cursor()
@@ -637,6 +638,7 @@ class not_regex(Rule):
     message = "must not match the {options[0]}"
     def parse_options(self,*args):
         self.options = args[0]
+
     
     def passes(self,value):
         return re.search(re.compile(self.options),value) is None
@@ -673,7 +675,7 @@ class present(Rule):
 class regex(Rule):
     " the field under validation must match the given regular expression."
     name = "regex"
-    message = "must match '{options[0]}'"
+    message = "must match '{options}'"
     
     def parse_options(self,*args):
         self.options = args[0]

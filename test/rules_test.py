@@ -5,22 +5,8 @@ from django_rulebase.rule import *
 from django_rulebase.validator import Validator
 from django_rulebase.rule import _in,_min,_max,_json,_uuid
 from django.core.files.uploadedfile import InMemoryUploadedFile
-from django.db import models
+from test_app.models import TestModel
 
-def django_env():
-    from django.conf import settings
-    filename = os.path.splitext(os.path.basename(__file__))[0]
-    dierectory = os.path.abspath(__file__).replace(filename+".py", "")
-    settings.configure(
-    DEBUG=True,
-    DATABASES={
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(dierectory, 'db.sqlite3'),
-        }
-        },
-    INSTALLED_APPS = []
-    )
 
 def test_accepted():
     rule = accepted()
@@ -172,7 +158,6 @@ def test_email():
     assert isinstance(rule.parse_message(),str)
     
 def test_exists():
-    django_env()
     rule = exists("test","title")
     assert rule.passes("some") == True
     assert rule.passes("another") == False
@@ -180,12 +165,6 @@ def test_exists():
     rule = exists("test1","title")
     assert rule.passes("another") == False
     assert isinstance(rule.parse_message(),str)
-    class TestModel(models.Model):
-        id = models.IntegerField(primary_key=True)
-        title= models.CharField()
-        desc = models.CharField()
-        class meta:
-            db_table = "test"
     rule = exists(TestModel,"title")
     assert rule.passes("some") == True
     assert rule.passes("someww") == False
@@ -431,7 +410,7 @@ def test_url():
     assert rule.passes('https://packaging.python.org/guides/using-testpypi/') == True
     assert rule.passes('python-org/guides\\using-testpypi/') == False
     assert isinstance(rule.parse_message(),str)
-    
+
 def test_uuid():
     rule = _uuid()
     assert rule.passes('c14fdc68-ee25-11e8-882e-cc52af04d017') == True
