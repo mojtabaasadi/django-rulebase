@@ -1,15 +1,15 @@
 from rules_test import *
-
+from django_rulebase.rule import _in
 
 def test_validation():
     rules = {
         'field1':"required|integer",
-        'field2':"required-if:field1,1|integer|exists:test,id",
+        'field2':"required-if:field1,1|integer|exists:test,id,in-array:field19.arr.*.id",
         'field3':"required-unless:field1,1|email",
         'field4':"required-with:field1,field2|url",
         'field5':"required-with-all:field1,field2|nullable|string",
         'field6':"required-without:field0,field18|accepted",
-        'field7':"required-without-all:field19,field20|alpha-dash",
+        'field7':"required-without-all:field111,field220|alpha-dash",
         'field8':"date|after:yesterday|before:tomorrow|after-or-equal:today|before-or-equal:now",
         'field9':"alpha-num|confirmed",
         'field9':"digits-between:3,4|digits:3|numeric",
@@ -22,6 +22,8 @@ def test_validation():
         "field16":"array|distinct|max:5",
         "field17":"boolean|different:field6",
         "field18":"active-url",
+        "field19.arr.*.id":"integer",
+        "field20":_in("some","another")
     }
     data = {
         'field1':3,
@@ -44,6 +46,8 @@ def test_validation():
         "field16":["aa",2,45,dict()],
         "field17":False,
         "field18":"https://github.com/mojtabaasadi/django-rulebase#sizevalue",
+        "field19":{"arr":[{"id":1},{"id":3}]},
+        "field20":"some"
     }
     validator = Validator(rules)
     validator.run_validation(data)

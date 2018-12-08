@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="django_rulebase",
-    version="0.0.8",
+    version="0.0.10",
     author="Mojtaba Asadi",
     author_email="m.asadi.al@outlook.com",
     description="Django rule base validation , inspired by laravel Request",

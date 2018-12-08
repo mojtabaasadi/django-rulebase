@@ -65,7 +65,7 @@ builtin_rules = {
 
 class Validator:
     valid = bool(True)
-    errors = dict()
+    errors = None
     rules = dict()
     
     def __init__(self, rules):
@@ -75,6 +75,7 @@ class Validator:
                  
     def run_validation(self,values):
         valid_all = dict()
+        errors = dict()
         for attribute,rules in self.rules.items():
             for rule in rules:
                 valid = bool()
@@ -92,16 +93,20 @@ class Validator:
                         valid = rule.passes(value)
                 message = rule.parse_message(value)
                 if not valid:
-                    if attribute in self.errors:
-                        if message not in self.errors[attribute]:
-                            self.errors[attribute].append(message)
+                    if attribute in errors:
+                        if message not in errors[attribute]:
+                            errors[attribute].append(message)
                     else:
-                        self.errors[attribute] = [rule.parse_message(value)]
-                elif valid and attribute in self.errors and message in self.errors[attribute] :
-                    self.errors[attribute].remove(message)
-                    if len(self.errors[attribute])==0: del self.errors[attribute]
+                        errors[attribute] = [rule.parse_message(value)]
+                elif valid and attribute in errors and message in errors[attribute] :
+                    errors[attribute].remove(message)
+                    if len(errors[attribute])==0: del errors[attribute]
                 self.valid &= valid
             valid_all[attribute] = valid
+
+        if len(errors.keys())>0:
+            self.errors = errors
+        
         return valid_all
       
     def parse_rule(self,rule_string):
@@ -125,11 +130,14 @@ class Validator:
                     _rules += rule.split("|")
                 else:
                     _rules += [ rule ]
+        elif isinstance(rules,Rule):
+            _rules = [rules]
+
         for i in range(len(_rules)):
             if isinstance(_rules[i],str):
                 name,options = self.parse_rule(_rules[i])
                 try:
-                    _rules[i] = builtin_rules[name](options)
+                    _rules[i] = builtin_rules[name](*options)
                 except Exception as e:
                     if "KeyError" in str(e):raise Exception("{} should be registered in this validation".format(name))
             if not isinstance(_rules[i],Rule):

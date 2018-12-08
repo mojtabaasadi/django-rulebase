@@ -210,7 +210,17 @@ Specifying A Custom Column Name
 ```python
 'state' : 'exists:states,abbreviation'
 ```
-
+Specifying A Custom connection
+```python
+'state' : 'exists:connection.states,abbreviation'
+```
+or usring model:
+```python
+from app.models import SomeModel
+from django_rulebase.rule  import exists
+...
+'state' : exists(SomeModel,"attribute")
+```
 ### file
 
 The field under validation must be a successfully uploaded file.
@@ -236,7 +246,12 @@ The file under validation must be an image (jpeg, png, bmp, gif, or svg)
 The field under validation must be included in the given list of values.
         Since this rule often requires you to implode an array,
         you can use _in() from .rule  to fluently construct the rule:
-  
+
+```python
+from djanfo_rulebase.rule import _in
+...
+"field" : ["required",_in(1,3,"string")]
+```  
 
 ### in-array:anotherfield.*
 

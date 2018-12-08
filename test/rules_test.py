@@ -5,6 +5,7 @@ from django_rulebase.rule import *
 from django_rulebase.validator import Validator
 from django_rulebase.rule import _in,_min,_max,_json,_uuid
 from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.db import models
 
 def django_env():
     from django.conf import settings
@@ -17,87 +18,88 @@ def django_env():
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': os.path.join(dierectory, 'db.sqlite3'),
         }
-        }
+        },
+    INSTALLED_APPS = []
     )
 
 def test_accepted():
-    rule = accepted([])
+    rule = accepted()
     assert rule.passes('true') == True
     assert rule.passes(0) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_active_url():
-    rule = active_url([])
+    rule = active_url()
     assert rule.passes('https://www.tutorialspoint.com') == True
     assert rule.passes('https://www.kavbook.ir') == False
     assert isinstance(rule.parse_message(),str)
     
 def test_after():
-    rule = after(['next week'])
+    rule = after('next week')
     rule.set_values({})
     assert rule.passes('next month') == True
     assert rule.passes("2018-11-19") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_after_or_equal():
-    rule = after_or_equal(['2 weeks ago'])
+    rule = after_or_equal('2 weeks ago')
     rule.set_values({})
     assert rule.passes("2 weeks ago") == True
     assert rule.passes("3 weeks ago") == False
     assert isinstance(rule.parse_message(),str)
 
 def test_alpha():
-    rule = alpha([])
+    rule = alpha()
     assert rule.passes("randomtext") == True
     assert rule.passes("oh sorry __-9789") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_alpha_dash():
-    rule = alpha_dash([])
+    rule = alpha_dash()
     assert rule.passes("oaudi-Ssad99ds9") == True
     assert rule.passes("\\\\sl;d*&*&%^") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_alpha_num():
-    rule = alpha_num([])
+    rule = alpha_num()
     assert rule.passes("Dfdsf3432") == True
     assert rule.passes('--#%#@$ HUUST BANGING on keyboard2348(*&^%$') == False
     assert isinstance(rule.parse_message(),str)
     
 def test_array():
-    rule = array([])
+    rule = array()
     assert rule.passes([]) == True
     assert rule.passes(set([])) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_before():
-    rule = before(['last week'])
+    rule = before('last week')
     rule.set_values({})
     assert rule.passes('a month ago') == True
     assert rule.passes('yesterday') == False
     assert isinstance(rule.parse_message(),str)
     
 def test_before_or_equal():
-    rule = before_or_equal(["today"])
+    rule = before_or_equal("today")
     rule.set_values({})
     assert rule.passes("today") == True
     assert rule.passes("in 2 days") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_between():
-    rule = between([3,5])
+    rule = between(3,5)
     assert rule.passes(4) == True
     assert rule.passes([4,4]) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_boolean():
-    rule = boolean([])
+    rule = boolean()
     assert rule.passes(False) == True
     assert rule.passes([True]) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_confirmed():
-    rule = confirmed([])
+    rule = confirmed()
     rule.set_attribute("password")
     rule.set_values({'password_confirmation':"1234"})
     assert rule.passes("1234") == True
@@ -105,13 +107,13 @@ def test_confirmed():
     assert isinstance(rule.parse_message(),str)
     
 def test_date():
-    rule = date([])
+    rule = date()
     assert rule.passes("11/19/2018") == True
     assert rule.passes("2018/44/433") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_date_equals():
-    rule = date_equals(["field"])
+    rule = date_equals("field")
     rule.set_values({"field":"today"})
     assert rule.passes("today") == True
     assert rule.passes("tomorrow") == False
@@ -120,7 +122,7 @@ def test_date_equals():
 
     
 def test_date_format():
-    rule = date([])
+    rule = date()
     assert rule.passes("2018/11/19") == True
     assert rule.passes("2018-11-19") == True
     assert rule.passes("19/11/2018") == True
@@ -129,7 +131,7 @@ def test_date_format():
     assert isinstance(rule.parse_message(),str)
     
 def test_different():
-    rule = different(['field'])
+    rule = different('field')
     rule.set_values({'field':"val"})
     assert rule.passes("val") == False
     assert isinstance(rule.parse_message(),str)
@@ -142,7 +144,7 @@ def test_different():
     assert rule.passes({}) == True
     
 def test_digits():
-    rule = digits([14])
+    rule = digits(14)
     assert rule.passes("23094827402948") == True
     assert rule.passes("230948274029481") == False
     assert isinstance(rule.parse_message(),str)
@@ -150,7 +152,7 @@ def test_digits():
     assert isinstance(rule.parse_message(),str)
     
 def test_digits_between():
-    rule = digits_between(['5',7])
+    rule = digits_between('5',7)
     assert rule.passes('1458345') == True
     assert rule.passes("12120039") == False
     assert isinstance(rule.parse_message(),str)
@@ -158,26 +160,35 @@ def test_digits_between():
     assert isinstance(rule.parse_message(),str)
 
 def test_distinct():
-    rule = distinct([])
+    rule = distinct()
     assert rule.passes([1,2,3,4,5]) == True
     assert rule.passes(["3","3"]) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_email():
-    rule = email([])
+    rule = email()
     assert rule.passes("ceo@awesome.co") == True
     assert rule.passes("super@duper-com") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_exists():
     django_env()
-    rule = exists(["test","title"])
+    rule = exists("test","title")
     assert rule.passes("some") == True
     assert rule.passes("another") == False
     assert isinstance(rule.parse_message(),str)
-    rule = exists(["test1","title"])
+    rule = exists("test1","title")
     assert rule.passes("another") == False
     assert isinstance(rule.parse_message(),str)
+    class TestModel(models.Model):
+        id = models.IntegerField(primary_key=True)
+        title= models.CharField()
+        desc = models.CharField()
+        class meta:
+            db_table = "test"
+    rule = exists(TestModel,"title")
+    assert rule.passes("some") == True
+    assert rule.passes("someww") == False
 
 def test_file():
     rule = file()
@@ -192,14 +203,14 @@ def test_filled():
     assert isinstance(rule.parse_message(),str)
     
 def test_gt():
-    rule = gt(['field'])
+    rule = gt('field')
     rule.set_values({"field":"value"})
     assert rule.passes("valuee") == True
     assert rule.passes("val") == False
     assert isinstance(rule.parse_message(),str)
     
 def test_gte():
-    rule = gte(["field"])
+    rule = gte("field")
     rule.set_values({"field":"value"})
     assert rule.passes("12223") == True
     assert rule.passes("-") == False
@@ -207,19 +218,19 @@ def test_gte():
     
 
 def test_in():
-    rule = _in([2,3,57,"ee"])
+    rule = _in(2,3,57,"ee")
     assert rule.passes("ee") == True
     assert rule.passes("57") == False
     assert isinstance(rule.parse_message(),str)
 
 def test_in():
-    rule = not_in([2,3,57,"ee"])
+    rule = not_in(2,3,57,"ee")
     assert rule.passes("eee") == True
     assert rule.passes(57) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_in_array():
-    rule = in_array(["field"])
+    rule = in_array("field")
     rule.set_values({"field":[1,3,7,"55"]})
     assert rule.passes(7) == True
     assert rule.passes("5") == False
@@ -261,14 +272,14 @@ def test_json():
     assert isinstance(rule.parse_message(),str)
 
 def test_lt():
-    rule = lt(["field"])
+    rule = lt("field")
     rule.set_values({"field":["s","11"]})
     assert rule.passes(["q"]) == True
     assert rule.passes(["swq","","qqaa"]) == False
     assert isinstance(rule.parse_message(),str)
     
 def test_lte():
-    rule = lte(["field"])
+    rule = lte("field")
     rule.set_values({"field":["s","11"]})
     assert rule.passes(["q",2]) == True
     assert rule.passes(["swq","qqaa",'']) == False
@@ -287,7 +298,7 @@ def test_mimetypes():
     assert isinstance(rule.parse_message(),str)
     
 def test_mimes():
-    rule = mimes(['jpeg','png'])
+    rule = mimes('jpeg','png')
     assert rule.passes(
         InMemoryUploadedFile(None,None,None,"image/jpeg",None,None)
     ) == True
@@ -316,7 +327,7 @@ def test_present():
     assert isinstance(rule.parse_message(),str)
     
 def test_regex():
-    rule = regex(['^[a-z]{0,66}\/[a-z]{0,66}$'])
+    rule = regex('^[a-z]{0,66}\/[a-z]{0,66}$')
     assert rule.passes('image/jpeg') == True
     assert rule.passes("233/3444") == False
     assert isinstance(rule.parse_message(),str)
@@ -331,7 +342,7 @@ def test_required():
     assert isinstance(rule.parse_message(),str)
     
 def test_required_if():
-    rule = required_if(['foo',"1"])
+    rule = required_if('foo',"1")
     rule.set_values({"foo":"1","bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
@@ -342,7 +353,7 @@ def test_required_if():
     assert isinstance(rule.parse_message(),str)
 
 def test_required_unless():
-    rule = required_unless(['foo',"q"])
+    rule = required_unless('foo',"q")
     rule.set_values({"foo":"q"})
     rule.set_attribute('bar')
     assert rule.passes() == True
@@ -351,7 +362,7 @@ def test_required_unless():
     assert isinstance(rule.parse_message(),str)
 
 def test_required_with():
-    rule = required_with(['foo','chi'])
+    rule = required_with('foo','chi')
     rule.set_values({"foo":"","bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
@@ -360,7 +371,7 @@ def test_required_with():
     assert isinstance(rule.parse_message(),str)
 
 def test_required_with_all():
-    rule = required_with_all(['foo','chi'])
+    rule = required_with_all('foo','chi')
     rule.set_values({"foo":"","chi":2,"bar":1234})
     rule.set_attribute('bar')
     assert rule.passes() == True
@@ -369,7 +380,7 @@ def test_required_with_all():
     assert isinstance(rule.parse_message(),str)
 
 def test_required_without():
-    rule = required_without(["foo","bar"])
+    rule = required_without("foo","bar")
     rule.set_values({"baz":"foo"})
     rule.set_attribute('baz')
     assert rule.passes() == True
@@ -377,7 +388,7 @@ def test_required_without():
     assert rule.passes() == True
     
 def test_required_without_all():
-    rule = required_without_all(["foo","bar"])
+    rule = required_without_all("foo","bar")
     rule.set_values({"baz":"foo"})
     rule.set_attribute('baz')
     assert rule.passes() == True
@@ -386,7 +397,7 @@ def test_required_without_all():
     assert isinstance(rule.parse_message(),str)
     
 def test_same():
-    rule = same(["bar"])
+    rule = same("bar")
     rule.set_values({"bar":"some","foo":"bingo"})
     assert rule.passes("some") == True
     assert rule.passes("bingo") == False
@@ -410,7 +421,7 @@ def test_timezone():
     assert isinstance(rule.parse_message(),str)
     
 def test_unique():
-    rule = unique(["test","title"])
+    rule = unique("test","title")
     assert rule.passes("unique") == True
     assert rule.passes("some") == False
     assert isinstance(rule.parse_message(),str)

@@ -3,7 +3,8 @@ import re,json,datetime,pytz
 import dns.resolver
 from uuid import UUID
 from dateparser import parse
-from django.db import connection
+from django.db import connection,connections
+from django.db.models import Model
 
 
 
@@ -15,14 +16,16 @@ class Rule:
     name = "Rule"
     attribute = ""
     
-    def __init__(self,options=[]):
-        self.parse_options(options)
+    def __init__(self,*args):
+        self.parse_options(*args)
     
-    def parse_options(self,options):
-        if isinstance(options,list):
-            self.options = options
+    def parse_options(self,*args):
+        if  len(args)>1:
+            self.options = args
+        elif len(args)==1:
+            self.options = args[0].split(",") if isinstance(args[0],str) else args
         else:
-            self.options = options.split(",") if isinstance(options,str) else [options]
+            self.options = []
     
     def passes(self,value):
         return False
@@ -334,14 +337,20 @@ class exists(Rule):
         If the 'column' option is not specified, the field name will be used.
     """
     name = "exists"
+    
     def message(self):
         return "must exist on {options[0]} column {options[1]}"
     
     def passes(self,value):
         table = self.options[0]
         column = self.options[1] if self.options[1] != None else 'name'
-        cr = connection.cursor()
+        if isinstance(self.options[0],Model):
+            return self.options[0].objects.get(**{self.options[1]:value}) is not None
         try:
+            if "." in table:
+                cr = connections[table.split(".")[0]].cursor()
+            else:
+                cr = connection.cursor()
             cr.execute("select * from {} where {}={}".format(table,column,
                 value if not isinstance(value,str) else "'"+value+"'"))
             return len(cr.fetchall()) > 0
@@ -626,14 +635,11 @@ class not_regex(Rule):
     "The field under validation must not match the given regular expression."
     name = "not-regex"
     message = "must not match the {options[0]}"
-    def parse_options(self,options):
-        if isinstance(options,list):
-            self.options = options
-        else:
-            self.options = [options]
+    def parse_options(self,*args):
+        self.options = args[0]
     
     def passes(self,value):
-        return re.search(re.compile(self.options[0]),value) is None
+        return re.search(re.compile(self.options),value) is None
 
 
 class nullable(Rule):
@@ -669,15 +675,12 @@ class regex(Rule):
     name = "regex"
     message = "must match '{options[0]}'"
     
-    def parse_options(self,options):
-        if isinstance(options,list):
-            self.options = options
-        else:
-            self.options = [options]
+    def parse_options(self,*args):
+        self.options = args[0]
     
     
     def passes(self,value):
-        return re.search(re.compile(self.options[0]),value) is not None
+        return re.search(re.compile(self.options),value) is not None
 
 
 class required(Rule):
@@ -857,8 +860,11 @@ class unique(Rule):
     def passes(self,value):
         table = self.options[0]
         column = self.options[1] if self.options[1] != None else 'name'
-        cr = connection.cursor()
         try:
+            if "." in table:
+                cr = connections[table.split(".")[0]].cursor()
+            else:
+                cr = connection.cursor()
             cr.execute("select * from {} where {}={}".format(table,column,
                 value if not isinstance(value,str) else "'"+value+"'"))
             return len(cr.fetchall()) == 1
