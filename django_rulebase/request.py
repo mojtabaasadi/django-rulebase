@@ -1,7 +1,7 @@
 from django.http import HttpResponseBadRequest,HttpResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import classonlymethod
-from .validator import Validator
+from .validator import Validator,parse_request
 import json
 
 
@@ -19,11 +19,7 @@ class Request:
         if self.view is None  or not callable(self.view):
             raise Exception('view function must be provided as view property of {}'.format(self.__name__))
         def view_func(request):
-            _json_ = 'json' in request.content_type
-            if _json_:
-                body = json.loads(request.body)
-            else:
-                body = getattr(request,request.method)
+            body = parse_request(request)
             valid = self.run_validator(self,body)
             return self.view(request,valid,self.validator.errors)
         return csrf_exempt(view_func)

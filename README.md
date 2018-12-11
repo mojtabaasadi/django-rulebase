@@ -11,6 +11,17 @@ pip install django-rulebase
 
 in app.views:
 ```python
+from django_rulebase.validator import require_validation
+
+@require_validation({
+    "egg":"file|mimetypes:application/octet-stream"
+})
+def view_function(request):
+    ...
+
+```
+or 
+```python
 from django.http import HttpResponse,HttpResponseBadRequest
 from django_rulebase import Request  
 

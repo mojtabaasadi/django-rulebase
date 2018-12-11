@@ -1,5 +1,8 @@
 from .rule import *
 from .rule import _json,_in,_max,_min,_uuid
+from django.core.handlers.wsgi import WSGIRequest
+import json
+from django.http import JsonResponse
 
 builtin_rules = {
     "accepted":accepted,
@@ -63,13 +66,48 @@ builtin_rules = {
     "uuid":_uuid,
 }
 
+def parse_rule_name(rule):
+    if ":" in rule:
+        return rule[:rule.find(":")]
+    else:
+        return rule
+
+def is_rule_valid(rule):
+    valid = True
+    if isinstance(rule,str):
+        valid &= all([parse_rule_name(ar) in builtin_rules for ar in rule.split("|") ])
+    elif isinstance(rule,list):
+        valid &= all([is_rule_valid(rl) for rl in rule])
+    else:
+        valid &= isinstance(rule,Rule)
+    if not valid: raise Exception("Seems rule '{}' is not known rule or maybe its not a valid custom rule".format(rule))
+    return valid
+
+
+def is_rules_valid(rules):
+    valid = isinstance(rules,dict)
+    for attr,rule in rules.items():
+        valid &= is_rule_valid(rule)
+    return valid
+        
+def parse_request(request):
+    if "json" in request.content_type:
+        data = json.loads(request.body.decode("utf-8"))
+    else:
+        data = dict(getattr(request,request.method))
+    if len(request.FILES.keys())>0:
+        for key in request.FILES.keys():
+            data[key] = request.FILES[key]
+    return data
+
+
 class Validator:
     valid = bool(True)
     errors = None
     rules = dict()
     
     def __init__(self, rules):
-        if not isinstance(rules,dict):raise Exception("rules must be of type dict")
+        is_rules_valid(rules)
         for key in rules.keys():
             self.rules[key] = self.parse(rules[key])
                  
@@ -110,13 +148,11 @@ class Validator:
         return valid_all
       
     def parse_rule(self,rule_string):
+        name = parse_rule_name(rule_string)
         if ":" in rule_string:
             _end_n = rule_string.find(":")
-            name = rule_string[:_end_n]
-            # some rule options shoudldnt split by ',' like regex 
             options = [rule_string[_end_n + 1:]]
         else :
-            name = rule_string
             options = []
         return name,options
     
@@ -143,3 +179,19 @@ class Validator:
             if not isinstance(_rules[i],Rule):
                 raise Exception(" {}  is not a valid rule in validation".format(str(_rules[i])))
         return _rules
+
+
+def require_validation(rules):
+    is_rules_valid(rules)
+    def dec(func):
+        def vv(*args, **kwargs):
+            request = [arg for arg in args if isinstance(arg,WSGIRequest)][0]
+            data = parse_request(request)
+            v = Validator(rules)
+            v.run_validation(data)
+            if v.valid:
+                return func(*args, **kwargs)
+            else:
+                return JsonResponse(v.errors,safe=False)
+        return vv
+    return dec
