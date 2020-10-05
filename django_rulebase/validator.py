@@ -139,7 +139,7 @@ class Validator:
                 elif valid and attribute in errors and message in errors[attribute] :
                     errors[attribute].remove(message)
                     if len(errors[attribute])==0: del errors[attribute]
-                self.valid &= valid
+                self.valid &= bool(valid)
             valid_all[attribute] = valid
 
         if len(errors.keys())>0:
